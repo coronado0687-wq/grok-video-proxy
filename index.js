@@ -16,6 +16,26 @@ app.post('/api/videos/generations', async (req, res) => {
     const auth = req.headers['authorization'];
     const body = { ...req.body };
 
+    // Si viene imagen en base64, subirla a ImgBB primero
+    if (body.image && body.image.startsWith('data:')) {
+      const base64 = body.image.split(',')[1];
+      const formData = new URLSearchParams();
+      formData.append('image', base64);
+      formData.append('key', '5f8e1b2c3d4a5b6c7d8e9f0a1b2c3d4e');
+
+      const imgRes = await fetch('https://api.imgbb.com/1/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const imgData = await imgRes.json();
+      if (imgData.success) {
+        body.image = imgData.data.url;
+        console.log('Imagen subida a ImgBB:', body.image);
+      } else {
+        return res.status(500).json({ error: 'Error subiendo imagen' });
+      }
+    }
+
     const response = await fetch('https://api.x.ai/v1/videos/generations', {
       method: 'POST',
       headers: {
@@ -26,7 +46,7 @@ app.post('/api/videos/generations', async (req, res) => {
     });
 
     const text = await response.text();
-    console.log('xAI raw response:', text.substring(0, 200));
+    console.log('xAI response:', text.substring(0, 200));
 
     try {
       const data = JSON.parse(text);
