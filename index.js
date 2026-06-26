@@ -28,7 +28,7 @@ app.post('/api/videos/generations', async (req, res) => {
       });
       const imgData = await imgRes.json();
       if (imgData.success) {
-        body.image = imgData.data.url;
+        body.image = { url: imgData.data.url };
         console.log('Imagen subida:', body.image);
       } else {
         return res.status(500).json({ error: 'Error subiendo imagen a ImgBB' });
