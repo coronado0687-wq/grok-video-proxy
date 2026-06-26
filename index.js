@@ -11,25 +11,61 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '50mb' }));
 
-// Generar imagen con Grok
-app.post('/api/images/generations', async (req, res) => {
+// Analizar imágenes con Grok Vision y generar prompt
+app.post('/api/analyze', async (req, res) => {
   try {
     const auth = req.headers['authorization'];
-    const response = await fetch('https://api.x.ai/v1/images/generations', {
+    const { personImage, clothingImage, extraPrompt } = req.body;
+
+    const content = [];
+
+    if (personImage) {
+      content.push({ type: 'image_url', image_url: { url: personImage } });
+      content.push({ type: 'text', text: 'Esta es la imagen del personaje.' });
+    }
+
+    if (clothingImage) {
+      content.push({ type: 'image_url', image_url: { url: clothingImage } });
+      content.push({ type: 'text', text: 'Esta es la ropa o estilo que debe usar.' });
+    }
+
+    content.push({
+      type: 'text',
+      text: `Describe detalladamente en inglés para un generador de imágenes IA: el personaje (características físicas, rostro, cabello, complexión) usando exactamente la ropa de la segunda imagen, en esta escena: ${extraPrompt || 'posando con actitud segura'}. Sé muy específico con colores, texturas y detalles. Solo responde con el prompt, sin explicaciones.`
+    });
+
+    const response = await fetch('https://api.x.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': auth
       },
+      body: JSON.stringify({
+        model: 'grok-2-vision-1212',
+        messages: [{ role: 'user', content }],
+        max_tokens: 500
+      })
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Generar imagen
+app.post('/api/images/generations', async (req, res) => {
+  try {
+    const auth = req.headers['authorization'];
+    const response = await fetch('https://api.x.ai/v1/images/generations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': auth },
       body: JSON.stringify(req.body)
     });
     const text = await response.text();
-    try {
-      const data = JSON.parse(text);
-      res.status(response.status).json(data);
-    } catch(e) {
-      res.status(response.status).json({ error: text });
-    }
+    try { res.status(response.status).json(JSON.parse(text)); }
+    catch(e) { res.status(response.status).json({ error: text }); }
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -41,20 +77,15 @@ app.post('/api/videos/generations', async (req, res) => {
     const auth = req.headers['authorization'];
     const body = { ...req.body };
 
-    if (body.image && body.image.startsWith('data:')) {
+    if (body.image && typeof body.image === 'string' && body.image.startsWith('data:')) {
       const base64 = body.image.split(',')[1];
       const formData = new URLSearchParams();
       formData.append('image', base64);
       formData.append('key', '1fbb9b3803819bf22cecd6642ca82810');
-
-      const imgRes = await fetch('https://api.imgbb.com/1/upload', {
-        method: 'POST',
-        body: formData
-      });
+      const imgRes = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: formData });
       const imgData = await imgRes.json();
       if (imgData.success) {
         body.image = { url: imgData.data.url };
-        console.log('Imagen subida:', imgData.data.url);
       } else {
         return res.status(500).json({ error: 'Error subiendo imagen' });
       }
@@ -62,23 +93,16 @@ app.post('/api/videos/generations', async (req, res) => {
 
     const response = await fetch('https://api.x.ai/v1/videos/generations', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': auth
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': auth },
       body: JSON.stringify(body)
     });
 
     const text = await response.text();
     console.log('xAI response:', text.substring(0, 200));
-
-    try {
-      const data = JSON.parse(text);
-      res.status(response.status).json(data);
-    } catch(e) {
-      res.status(response.status).json({ error: text });
-    }
+    try { res.status(response.status).json(JSON.parse(text)); }
+    catch(e) { res.status(response.status).json({ error: text }); }
   } catch (e) {
+    console.error('Error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
