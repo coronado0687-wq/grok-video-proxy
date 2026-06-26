@@ -9,26 +9,12 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use((req, res, next) => {
-  express.json({ limit: '50mb' })(req, res, (err) => {
-    if (err) {
-      console.error('JSON parse error:', err.message);
-      return res.status(400).json({ error: 'JSON invalido: ' + err.message });
-    }
-    next();
-  });
-});
+app.use(express.json({ limit: '50mb' }));
 
 app.post('/api/videos/generations', async (req, res) => {
   try {
-    const auth = req.headers['authorization'] || req.headers['Authorization'];
-    console.log('Auth recibido:', auth ? auth.substring(0, 20) + '...' : 'NINGUNO');
-    console.log('Body keys:', Object.keys(req.body || {}));
-
-    if (!auth) return res.status(401).json({ error: 'Falta Authorization' });
-
+    const auth = req.headers['authorization'];
     const body = { ...req.body };
-    console.log('Enviando a xAI modelo:', body.model);
 
     const response = await fetch('https://api.x.ai/v1/videos/generations', {
       method: 'POST',
@@ -39,9 +25,15 @@ app.post('/api/videos/generations', async (req, res) => {
       body: JSON.stringify(body)
     });
 
-    const data = await response.json();
-    console.log('xAI status:', response.status);
-    res.status(response.status).json(data);
+    const text = await response.text();
+    console.log('xAI raw response:', text.substring(0, 200));
+
+    try {
+      const data = JSON.parse(text);
+      res.status(response.status).json(data);
+    } catch(e) {
+      res.status(response.status).json({ error: text });
+    }
   } catch (e) {
     console.error('Error:', e.message);
     res.status(500).json({ error: e.message });
@@ -50,7 +42,7 @@ app.post('/api/videos/generations', async (req, res) => {
 
 app.get('/api/videos/:id', async (req, res) => {
   try {
-    const auth = req.headers['authorization'] || req.headers['Authorization'];
+    const auth = req.headers['authorization'];
     const response = await fetch(`https://api.x.ai/v1/videos/${req.params.id}`, {
       headers: { 'Authorization': auth }
     });
