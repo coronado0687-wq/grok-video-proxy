@@ -45,5 +45,5 @@ app.get('/api/videos/:requestId', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(POR
+const PORT = parseInt(process.env.PORT) || 3000;
+app.listen(PORT, '0.0.0.0', () => console.log('Proxy corriendo en puerto ' + PORT));
