@@ -11,6 +11,31 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '50mb' }));
 
+// Generar imagen con Grok
+app.post('/api/images/generations', async (req, res) => {
+  try {
+    const auth = req.headers['authorization'];
+    const response = await fetch('https://api.x.ai/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': auth
+      },
+      body: JSON.stringify(req.body)
+    });
+    const text = await response.text();
+    try {
+      const data = JSON.parse(text);
+      res.status(response.status).json(data);
+    } catch(e) {
+      res.status(response.status).json({ error: text });
+    }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Generar video
 app.post('/api/videos/generations', async (req, res) => {
   try {
     const auth = req.headers['authorization'];
@@ -29,9 +54,9 @@ app.post('/api/videos/generations', async (req, res) => {
       const imgData = await imgRes.json();
       if (imgData.success) {
         body.image = { url: imgData.data.url };
-        console.log('Imagen subida:', body.image);
+        console.log('Imagen subida:', imgData.data.url);
       } else {
-        return res.status(500).json({ error: 'Error subiendo imagen a ImgBB' });
+        return res.status(500).json({ error: 'Error subiendo imagen' });
       }
     }
 
@@ -54,11 +79,11 @@ app.post('/api/videos/generations', async (req, res) => {
       res.status(response.status).json({ error: text });
     }
   } catch (e) {
-    console.error('Error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
 
+// Consultar estado del video
 app.get('/api/videos/:id', async (req, res) => {
   try {
     const auth = req.headers['authorization'];
