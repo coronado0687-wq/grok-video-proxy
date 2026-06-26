@@ -41,7 +41,7 @@ app.post('/api/analyze', async (req, res) => {
         'Authorization': auth
       },
       body: JSON.stringify({
-        model: 'grok-2-vision-1212',
+        model: 'grok-2-vision-latest',
         messages: [{ role: 'user', content }],
         max_tokens: 500
       })
