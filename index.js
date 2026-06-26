@@ -16,12 +16,11 @@ app.post('/api/videos/generations', async (req, res) => {
     const auth = req.headers['authorization'];
     const body = { ...req.body };
 
-    // Si viene imagen en base64, subirla a ImgBB primero
     if (body.image && body.image.startsWith('data:')) {
       const base64 = body.image.split(',')[1];
       const formData = new URLSearchParams();
       formData.append('image', base64);
-      formData.append('key', '5f8e1b2c3d4a5b6c7d8e9f0a1b2c3d4e');
+      formData.append('key', '1fbb9b3803819bf22cecd6642ca82810');
 
       const imgRes = await fetch('https://api.imgbb.com/1/upload', {
         method: 'POST',
@@ -30,9 +29,9 @@ app.post('/api/videos/generations', async (req, res) => {
       const imgData = await imgRes.json();
       if (imgData.success) {
         body.image = imgData.data.url;
-        console.log('Imagen subida a ImgBB:', body.image);
+        console.log('Imagen subida:', body.image);
       } else {
-        return res.status(500).json({ error: 'Error subiendo imagen' });
+        return res.status(500).json({ error: 'Error subiendo imagen a ImgBB' });
       }
     }
 
